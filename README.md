@@ -21,7 +21,7 @@ Provide secrets at runtime. Never commit private keys or add them to image layer
 
 ## Notes format
 
-Each locale tag must be on its own line. Blank lines between blocks are accepted. Text is preserved except for leading/trailing whitespace; XML escaping is unnecessary (`&` stays `&`). UTF-8 BOM and CRLF files are accepted.
+Locale tags can be on their own lines or inline, so notes pasted into a single-line CI input are accepted. Blank lines between blocks and surrounding Markdown code fences (` ```text ` or ` ``` `) are accepted. Line breaks within notes are preserved when supplied; line breaks removed by a browser cannot be reconstructed. Text is preserved except for leading/trailing whitespace; XML escaping is unnecessary (`&` stays `&`). UTF-8 BOM and CRLF files are accepted.
 
 ```text
 <en-US>

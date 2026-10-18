@@ -8,11 +8,20 @@ require_relative 'locales'
 module ReleaseNotes
   class Error < StandardError; end
 
+  # Browser text inputs may collapse pasted line breaks. Tags delimit blocks even
+  # when inline; do not attempt to reconstruct line breaks within the notes.
+  def self.normalize(input)
+    text = input.sub(/\A\uFEFF/, '').strip
+    fence = text.match(/\A```(?:text)?[ \t]*(?:\r?\n|[ \t]+)(.*?)\s*```\z/m)
+    text = fence[1] if fence
+    text.gsub(%r{[ \t]*(</?[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*>)[ \t]*}) { "\n#{$1}\n" }
+  end
+
   def self.parse(input)
     notes = {}
     locale = nil
     lines = []
-    input.sub(/\A\uFEFF/, '').each_line.with_index(1) do |line, number|
+    normalize(input).each_line.with_index(1) do |line, number|
       tag = line.strip.match(%r{\A<(/?)([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)>\z})
       if tag
         closing, code = tag.captures

@@ -6,6 +6,26 @@ class ReleaseNotesTest < Minitest::Test
     assert_equal({ 'en-US' => "Fix & improve\r\nSecond line" }, ReleaseNotes.parse("\uFEFF<en-US>\r\nFix & improve\r\nSecond line\r\n</en-US>\r\n"))
   end
 
+  def test_inline_tags_from_single_line_pipeline_input
+    assert_equal({ 'en-US' => 'Fix & improve', 'fr-FR' => 'Corrections' },
+      ReleaseNotes.parse('<en-US> Fix & improve </en-US> <fr-FR> Corrections </fr-FR>'))
+  end
+
+  def test_copied_markdown_fence
+    expected = { 'en-US' => "First line\nSecond line" }
+    assert_equal expected, ReleaseNotes.parse("```text\n<en-US>\nFirst line\nSecond line\n</en-US>\n```")
+    assert_equal({ 'en-US' => 'Fixes' }, ReleaseNotes.parse('```text <en-US> Fixes </en-US> ```'))
+    assert_equal({ 'en-US' => 'Fixes' }, ReleaseNotes.parse("```\n<en-US>Fixes</en-US>\n```"))
+  end
+
+  def test_rejects_invalid_inline_input
+    ['<en-US></en-US>', '<en-US>x</fr-FR>', '<en-US>x<fr-FR>y</fr-FR></en-US>',
+     '<en-US>x</en-US><en-US>y</en-US>', 'outside <en-US>x</en-US>',
+     '<en-US>x</en-US> outside', '<en-US>x</en-US><bad_tag>'].each do |input|
+      assert_raises(ReleaseNotes::Error) { ReleaseNotes.parse(input) }
+    end
+  end
+
   def test_rejects_invalid_input
     ['', '<en-US>', "<en-US>\nx\n</de-DE>", "<en-US>\n</en-US>", "<en-US>\nx\n<de-DE>\n", "outside\n", "<en-US>\n#{'x' * 4001}\n</en-US>", "<en-US>\nx\n</en-US>\n<en-US>\ny\n</en-US>"].each do |input|
       assert_raises(ReleaseNotes::Error) { ReleaseNotes.parse(input) }
