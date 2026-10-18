@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require_relative '../lib/release_notes'
+
+options = { apply: false, validate: false }
+parser = OptionParser.new do |p|
+  p.banner = 'Usage: appstore-release-notes [options]'
+  p.on('--apply', 'Write changes (default: dry run)') { options[:apply] = true }
+  p.on('--validate', 'Validate and map input offline, without credentials') { options[:validate] = true }
+  p.on('--notes FILE', 'Defaults to RELEASE_NOTES_FILE') { |v| options[:notes] = v }
+  p.on('--locale-map FILE', 'JSON source-to-target overrides; null skips a source') { |v| options[:mapping] = v }
+  p.on('-h', '--help') { puts p; exit }
+end
+begin
+  parser.parse!
+  raise ReleaseNotes::Error, "Unexpected arguments: #{ARGV.join(' ')}" unless ARGV.empty?
+  raise ReleaseNotes::Error, '--validate and --apply cannot be combined' if options[:validate] && options[:apply]
+  required = lambda do |name|
+    value = ENV[name]
+    raise ReleaseNotes::Error, "Set #{name}" if value.nil? || value.strip.empty?
+    value
+  end
+  file = options[:notes] || required.call('RELEASE_NOTES_FILE')
+  overrides = options[:mapping] ? JSON.parse(File.read(options[:mapping])) : {}
+  raise ReleaseNotes::Error, 'Locale map must be a JSON object' unless overrides.is_a?(Hash)
+  notes = ReleaseNotes.map(ReleaseNotes.parse(File.read(file, encoding: 'bom|utf-8')), overrides)
+  if options[:validate]
+    puts "Validated #{notes.length} App Store locales."
+  else
+    bundle = required.call('APP_BUNDLE_ID')
+    version = required.call('APP_VERSION')
+    client = ReleaseNotes::Client.new(required.call('APP_STORE_CONNECT_KEY_ID'), required.call('APP_STORE_CONNECT_ISSUER_ID'), required.call('APP_STORE_CONNECT_KEY_FILE'))
+    ReleaseNotes.publish(client, bundle, version, notes, apply: options[:apply])
+  end
+rescue ReleaseNotes::Error, OptionParser::ParseError, JSON::ParserError, SystemCallError, OpenSSL::OpenSSLError, IOError, ArgumentError, EncodingError, SocketError, Timeout::Error => e
+  warn "Error: #{e.message}"
+  exit 1
+end

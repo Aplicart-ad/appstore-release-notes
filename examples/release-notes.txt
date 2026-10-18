@@ -1,0 +1,9 @@
+<en-US>
+Bug fixes and performance improvements.
+</en-US>
+<de-DE>
+Fehlerbehebungen und Leistungsverbesserungen.
+</de-DE>
+<it-IT>
+Correzioni di bug e miglioramenti delle prestazioni.
+</it-IT>
