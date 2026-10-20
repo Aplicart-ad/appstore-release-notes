@@ -134,6 +134,7 @@ module ReleaseNotes
 
   def self.publish(client, bundle_id, version_string, notes, apply: false)
     apps = client.list('/v1/apps', 'filter[bundleId]' => bundle_id)
+    apps = apps.select { |app| app.fetch('attributes').fetch('bundleId') == bundle_id }
     raise Error, "Expected one app for #{bundle_id}, found #{apps.length}" unless apps.length == 1
     versions = client.list("/v1/apps/#{apps.first.fetch('id')}/appStoreVersions", 'filter[versionString]' => version_string, 'filter[platform]' => 'IOS')
     raise Error, "Expected one existing iOS version #{version_string}, found #{versions.length}" unless versions.length == 1

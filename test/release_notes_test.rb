@@ -100,7 +100,7 @@ class ReleaseNotesTest < Minitest::Test
     end
     def list(path, _filters = {})
       case path
-      when '/v1/apps' then [{ 'id' => 'app' }]
+      when '/v1/apps' then [{ 'id' => 'app', 'attributes' => { 'bundleId' => 'bundle' } }]
       when '/v1/apps/app/appStoreVersions' then [{ 'id' => 'version', 'attributes' => { 'appStoreState' => 'PREPARE_FOR_SUBMISSION' } }]
       else
         %w[en-US de-DE].map { |l| { 'id' => l, 'attributes' => { 'locale' => l, 'whatsNew' => 'Old' } } }
@@ -110,6 +110,40 @@ class ReleaseNotesTest < Minitest::Test
       raise ReleaseNotes::Error, 'HTTP 409' if path.end_with?(@fail_locale.to_s) && @fail_locale
       @writes << body
     end
+  end
+
+  def test_app_lookup_requires_exact_bundle_id
+    client = FakeClient.new
+    apps = [
+      { 'id' => 'other', 'attributes' => { 'bundleId' => 'com.aplicart.tipkickbr' } },
+      { 'id' => 'app', 'attributes' => { 'bundleId' => 'com.aplicart.tipkick' } }
+    ]
+    paths = []
+    original_list = client.method(:list)
+    client.define_singleton_method(:list) do |path, filters = {}|
+      paths << path
+      path == '/v1/apps' ? apps : original_list.call(path, filters)
+    end
+    capture_io do
+      ReleaseNotes.publish(client, 'com.aplicart.tipkick', '1.0', { 'en-US' => 'New' }, apply: true)
+    end
+    assert_includes paths, '/v1/apps/app/appStoreVersions'
+    refute_includes paths, '/v1/apps/other/appStoreVersions'
+    assert_equal 1, client.writes.length
+
+    apps.pop
+    error = assert_raises(ReleaseNotes::Error) do
+      ReleaseNotes.publish(client, 'com.aplicart.tipkick', '1.0', { 'en-US' => 'New' }, apply: true)
+    end
+    assert_match 'found 0', error.message
+    assert_equal 1, client.writes.length
+
+    apps.replace(Array.new(2) { |i| { 'id' => "app#{i}", 'attributes' => { 'bundleId' => 'com.aplicart.tipkick' } } })
+    error = assert_raises(ReleaseNotes::Error) do
+      ReleaseNotes.publish(client, 'com.aplicart.tipkick', '1.0', { 'en-US' => 'New' }, apply: true)
+    end
+    assert_match 'found 2', error.message
+    assert_equal 1, client.writes.length
   end
 
   def test_dry_run_existing_only_and_unchanged
