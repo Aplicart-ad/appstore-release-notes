@@ -100,7 +100,9 @@ The table below covers every locale in [Google Play's store listing language lis
 
 Regional policies: `en-IN`, `en-SG`, and `en-ZA` use `en-GB`; `es-419` and `es-US` use `es-MX`; `zh-HK` and `zh-TW` use `zh-Hant`. These are deliberate fallbacks, not exact dialect equivalences. Renamed language codes (such as `iw-IL` → `he`) are normalized.
 
-When several input locales target the same Apple locale, identical text is deduplicated. Different text causes an error **before any writes**, independent of file order. Resolve it with a JSON override file:
+When both `zh-TW` and `zh-HK` are supplied, `zh-TW` takes precedence for `zh-Hant`, independent of file order, and `zh-HK` is logged as skipped. If `zh-TW` is absent or skipped with an override, `zh-HK` is used. Explicit overrides for `zh-HK` take precedence over this default policy.
+
+For other collisions, identical text is deduplicated. Different text causes an error **before any writes**, independent of file order. Resolve it with a JSON override file:
 
 ```json
 {

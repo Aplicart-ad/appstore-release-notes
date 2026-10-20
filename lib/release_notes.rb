@@ -57,6 +57,10 @@ module ReleaseNotes
     notes.each do |source, text|
       raise Error, "Unknown Google Play locale: #{source}" unless mapping.key?(source)
       target = mapping[source]
+      if source == 'zh-HK' && target == 'zh-Hant' && !overrides.key?(source) && notes.key?('zh-TW') && mapping['zh-TW'] == target
+        puts 'SKIP zh-HK: prefer zh-TW for zh-Hant'
+        next
+      end
       unless target
         puts "SKIP #{source}: no App Store equivalent"
         next

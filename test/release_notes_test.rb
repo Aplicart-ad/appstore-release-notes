@@ -47,6 +47,21 @@ class ReleaseNotesTest < Minitest::Test
     end
   end
 
+  def test_traditional_chinese_prefers_taiwan_regardless_of_input_order
+    notes = { 'zh-HK' => 'Hong Kong notes', 'zh-TW' => 'Taiwan notes' }
+    capture_io do
+      [notes, notes.to_a.reverse.to_h].each do |input|
+        assert_equal({ 'zh-Hant' => 'Taiwan notes' }, ReleaseNotes.map(input))
+      end
+      assert_equal({ 'zh-Hant' => 'Hong Kong notes' }, ReleaseNotes.map('zh-HK' => 'Hong Kong notes'))
+      assert_equal({ 'zh-Hant' => 'Hong Kong notes' }, ReleaseNotes.map(notes, 'zh-TW' => nil))
+      assert_equal({ 'zh-Hant' => 'Taiwan notes' }, ReleaseNotes.map(notes, 'zh-HK' => nil))
+      assert_equal({ 'zh-Hans' => 'Hong Kong notes', 'zh-Hant' => 'Taiwan notes' },
+        ReleaseNotes.map(notes, 'zh-HK' => 'zh-Hans'))
+      assert_raises(ReleaseNotes::Error) { ReleaseNotes.map(notes, 'zh-HK' => 'zh-Hant') }
+    end
+  end
+
   def test_jwt_signature
     require 'tempfile'
     key = OpenSSL::PKey::EC.generate('prime256v1')
